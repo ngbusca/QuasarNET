@@ -5,7 +5,7 @@ import argparse
 import numpy as np
 
 from keras.models import load_model
-from quasarnet.io import read_data, read_sdrq, wave
+from quasarnet.io import read_data, read_sdrq, wave, read_desi_truth
 from scipy.interpolate import interp1d
 from quasarnet.models import custom_loss
 from picca import constants
@@ -14,10 +14,40 @@ parser=argparse.ArgumentParser()
 
 parser.add_argument("--model",type=str,required=True)
 parser.add_argument("--super-drq",type=str,required=False, default = None)
+parser.add_argument("--truth",type=str,required=False, default = None)
+parser.add_argument("--spall",type=str,required=False, default = None)
 parser.add_argument("--data",type=str,required=True, default = None)
 args=parser.parse_args()
 
-truth, tids2pmf = read_sdrq(args.super_drq)
+if args.super_drq is not None:
+    truth, tids2pmf = read_sdrq(args.super_drq)
+elif args.truth is not None:
+    truth = read_desi_truth(args.truth)
+elif args.spall is not None:
+    h=fitsio.FITS(args.spall)
+    tids = h[1]['THING_ID'][:]
+    z_spall = h[1]['Z'][:]
+    zw_spall = h[1]['ZWARNING'][:]
+    class_spall = h[1]['CLASS'][:]
+
+    class_truth = np.zeros(len(z_spall))
+    w=class_spall=='STAR  '
+    class_truth[w]=1
+
+    w=(class_spall=='QSO   ')
+    class_truth[w]=3
+
+    w=class_spall=='GALAXY'
+    class_truth[w]=4
+
+    w=zw_spall!=0
+    class_truth[w]=1
+
+    zc=3*(zw_spall==0)
+    w=zc==0
+    zc[w]=1
+    truth = {t:(a,b,c) for t,a,b,c in zip(tids, class_truth, zc, z_spall)}
+
 tids,X,Y,z,bal = read_data(args.data, truth)
 
 model=load_model(args.model, custom_objects = {'custom_loss': custom_loss})
