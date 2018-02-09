@@ -1,0 +1,102 @@
+#!/usr/bin/env python
+
+import fitsio
+import argparse
+import numpy as np
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--drq', type=str, required=True)
+parser.add_argument('--prefix', type=str, required=True)
+parser.add_argument('--spall', type=str, required=True)
+
+args=parser.parse_args()
+
+drq=fitsio.FITS(args.drq)
+zconf = drq[1]['Z_CONF_PERSON'][:]
+zclass = drq[1]['CLASS_PERSON'][:]
+w = ((zconf!=0) | (zclass!=0) ) 
+plate=drq[1]['PLATE'][:][w]
+mjd=drq[1]['MJD'][:][w]
+fid = drq[1]['FIBERID'][:][w]
+zdrq=drq[1]['Z_VI'][:][w]
+zconf=zconf[w]
+zclass=zclass[w]
+
+Ydrq=np.zeros((len(plate),5))
+for i in range(Ydrq.shape[0]):
+    if zconf[i]==3:
+        if zclass[i]==3 or zclass[i]==30:
+            if zdrq[i]>2.1:
+                Ydrq[i,3]=1
+            else:
+                Ydrq[i,2]=1
+
+        elif zclass[i]==4:
+            Ydrq[i,1]=1
+
+        elif zclass[i]==1:
+            Ydrq[i,0]=1
+
+    else:
+        Ydrq[i,4]=1
+
+spall = fitsio.FITS(args.spall)
+zw_dict = {(p,m,f) : zw for p,m,f,zw in zip(spall[1]['PLATE'][:], spall[1]['MJD'][:], spall[1]['FIBERID'][:], spall[1]['ZWARNING'][:])}
+
+spzall_dict={}
+
+class toto(object):
+    pass
+
+pm=np.zeros(len(plate), dtype=toto)
+pm[:]=zip(plate, mjd)
+pm=np.unique(pm)
+for p,m in pm:
+    print p,m
+    h=fitsio.FITS(args.prefix+'/{0}/v5_10_0/spZall-{0}-{1}.fits'.format(p,m))
+    wpm=(drq[1]['PLATE'][:]==p) & (drq[1]['MJD'][:]==m)
+    fids = drq[1]['FIBERID'][:][wpm]
+    ntemplates = len(h[1]['Z'][:])/1000
+    zs = h[1]['Z'][:].reshape(-1,ntemplates)
+    chi2 = (h[1]['RCHI2'][:]*h[1]['DOF'][:]).reshape(-1,ntemplates)
+    clas = h[1]['CLASS'][:].reshape(-1,ntemplates)
+    
+    wfib = np.in1d(1+np.arange(1000), fids)
+    zs = zs[wfib,:]
+    chi2 = chi2[wfib,:]
+    clas = clas[wfib,:]
+
+    for i,f in enumerate(np.sort(fids)):
+        spzall_dict[(p,m,f,'z')] = zs[i]
+        spzall_dict[(p,m,f,'chi2')]=chi2[i]
+        spzall_dict[(p,m,f,'class')]=clas[i]
+
+Yauto = np.zeros((len(plate), 5))
+zauto = np.zeros(len(plate))
+
+for i,(p,m,f) in enumerate(zip(plate, mjd, fid)):
+    z = spzall_dict[(p,m,f,'z')][0]
+    clas = spzall_dict[(p,m,f,'class')][:5]
+    chi2 = spzall_dict[(p,m,f,'chi2')]
+    if clas[0]=='STAR  ':
+        Yauto[i,0]=1
+        zauto[i]=0
+    elif (clas[0]=='GALAXY') and (z<1.):
+        Yauto[i,1]=1
+        zauto[i]=z
+    elif (clas[0] == 'GALAXY') and ((clas=='GALAXY').sum()>2):
+        Yauto[i,1]=1
+        zauto[i]=z
+    elif (zw_dict[(p,m,f)]==0) and (clas[0]=='QSO   ') and ((clas=='STAR  ').sum()<2):
+        zauto[i]=z
+        if z>2.1:
+            Yauto[i,3]=1
+        else:
+            Yauto[i,2]=1
+    elif (zw_dict[(p,m,f)]>0) and ((clas=='STAR  ').sum()>1):
+        Yauto[i,0]=1
+        zauto[i]=0
+    if Yauto[i].sum()==0:
+        Yauto[i]=Ydrq[i]
+        zauto[i]=zdrq[i]
