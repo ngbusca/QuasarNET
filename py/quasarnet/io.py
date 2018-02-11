@@ -420,13 +420,12 @@ def read_spplate(fin, pmf2tid):
     tids=tids[~w]
     return tids, fl
 
-
-from picca import constants
+from .utils import absorber_IGM
 from scipy.interpolate import interp1d
 def box_offset(z, line='LYA', nboxes = 13):
     wave_to_i = interp1d(wave, np.arange(len(wave)), bounds_error=False, 
             fill_value=-1)
-    wave_line = (1+z)*constants.absorber_IGM[line]
+    wave_line = (1+z)*absorber_IGM[line]
     pos = wave_to_i(wave_line)/len(wave)*nboxes
     ipos = np.floor(pos).astype(int)
 

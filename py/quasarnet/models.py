@@ -65,6 +65,49 @@ def QuasarNET(input_shape =  None, classes = 6, boxes = 13, nlines = 1, reg_conv
 
     return model
 
+def QuasarNET2(input_shape =  None, boxes = 13, nlines = 1, reg_conv = 0., reg_fc=0):
+    
+    # Define the input as a tensor with shape input_shape
+    X_input = Input(input_shape)
+    X = X_input
+
+    nlayers=4
+    nfilters_max = 100
+    filter_size=10
+    strides = 2
+    for stage in range(nlayers):
+        nfilters = 100
+        print X.shape
+        X = Conv1D(nfilters, filter_size, strides = strides, name = 'conv{}'.format(stage+1), kernel_initializer = glorot_uniform(), kernel_regularizer=regularizers.l2(reg_conv))(X)
+        X = BatchNormalization(axis=-1)(X)
+        X = Activation('relu')(X)
+
+    # output layer
+    X = Flatten()(X)
+    X = Dense(nfilters_max, activation='linear', name='fc_common')(X)
+    X = BatchNormalization()(X)
+    X = Activation('relu', name='fc_activation')(X)
+
+    X_bal = Dense(1, activation='sigmoid', name='fc_bal', kernel_initializer = glorot_uniform())(X)
+
+    outputs = [X_bal]
+    X_box = []
+    for i in range(nlines):
+        #X_box_aux = Dense(boxes, activation='softmax', name='fc_box_{}'.format(i), kernel_initializer = glorot_uniform())(X)
+        X_box_aux = Dense(boxes, activation='sigmoid', name='fc_box_{}'.format(i), kernel_initializer = glorot_uniform())(X)
+        X_offset_aux = Dense(boxes, activation='sigmoid', name='fc_offset_{}'.format(i), kernel_initializer = glorot_uniform())(X)
+        X_box_aux = concatenate([X_box_aux, X_offset_aux], name="conc_box_{}".format(i))
+        print "adding additional lines", X_box_aux.shape
+        X_box.append(X_box_aux)
+    
+    for b in X_box:
+        outputs.append(b)
+
+    # Create model
+    model = Model(inputs = X_input, outputs = outputs, name='QuasarNET2')
+
+    return model
+
 def custom_loss(y_true, y_pred):
     assert y_pred.shape[1]%2 == 0
     nboxes = y_pred.shape[1]/2
