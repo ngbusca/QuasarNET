@@ -69,12 +69,14 @@ for l in args.lines:
     box_line[~w]=0
     box.append(np.concatenate([box_line, offset_line], axis=-1))
 
-try:
-    print args.model
+#try:
+if True:
+    print( args.model)
     model = getattr(models, args.model)(X[0,:,None].shape, boxes = args.nboxes, reg_conv = args.reg_conv, reg_fc=args.reg_fc, nlines = len(args.lines))
-    print "compiling model {}".format(args.model)
-except:
-    print "loading model from {}".format(args.model)
+    print( "compiling model {}".format(args.model))
+#except:
+else:
+    print( "loading model from {}".format(args.model))
     model = load_model(args.model, custom_objects = {'custom_loss': models.custom_loss})
 
 if args.fine_tune:
@@ -94,7 +96,7 @@ objective = [bal]
 for b in box:
     objective.append(b)
 
-print "starting fit"
+print( "starting fit")
 history = model.fit(X[:,:,None], objective, epochs = args.epochs, batch_size = args.batch)
 
 model.save(args.out)

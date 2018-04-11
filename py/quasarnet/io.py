@@ -36,10 +36,10 @@ def read_sdrq(sdrq):
 
 def read_data(fi, sdrq, z_lim=2.1):
     h=fitsio.FITS(fi)
-    tids = h[1]["TARGETID"][:]
+    tids = h[1]["TARGETID"][:].astype(int)
 
     ## remove thing_id == -1 or not in sdrq
-    w = (tids != -1) & (np.in1d(tids, sdrq.keys()))
+    w = (tids != -1) & (np.in1d(tids, list(sdrq.keys())))
     tids = tids[w]
     Xtmp = h[0].read()
     Xtmp = Xtmp[w]
@@ -108,11 +108,11 @@ def read_desi_truth(fin):
     truth = {}
     for t,c,z in zip(h[1]["TARGETID"][:], h[1]["TRUESPECTYPE"][:], h[1]["TRUEZ"][:]):
         c = c.strip()
-        if c=="QSO":
+        if c==b"QSO":
             c=3
-        elif c=="GALAXY":
+        elif c==b"GALAXY":
             c=4
-        elif c=="STAR":
+        elif c==b"STAR":
             c=1
         assert isinstance(c,int)
         truth[t] = (c,3,z)
