@@ -21,6 +21,7 @@ parser.add_argument("--data", type = str, required=True,nargs="*")
 parser.add_argument("--epochs", type = int, required=False, default = 5)
 parser.add_argument("--batch", type = int, required=False, default = 256)
 parser.add_argument("--nboxes", type = int, required=False, default = 13)
+parser.add_argument("--ndata", type = int, required=False, default = None)
 parser.add_argument("--reg-conv", type = float, required=False, default = 0., help="L2 regularization")
 parser.add_argument("--reg-fc", type = float, required=False, default = 0., help="L2 regularization")
 parser.add_argument("--out", type = str, required=True)
@@ -34,7 +35,7 @@ truth={}
 if args.super_drq is not None:
     sdrq,_ = io.read_sdrq(args.super_drq)
 if args.truth is not None:
-    truth,_ = io.read_desi_truth(args.truth)
+    truth = io.read_desi_truth(args.truth)
 
 for t,v in truth.items():
     sdrq[t]=v
@@ -52,58 +53,51 @@ for f in args.data:
         bal = np.concatenate((bal, aux[4]))
 ## sample weights for class, z, bal
 
+if args.ndata is not None:
+    ndata = args.ndata
+    tids = tids[:ndata]
+    X = X[:ndata]
+    Y = Y[:ndata]
+    z = z[:ndata]
+    bal = bal[:ndata]
+
 box=[]
-box_weight=[]
 for l in args.lines:
     box_line, offset_line, weight_line = io.box_offset(z,nboxes=args.nboxes, line = l)
+    w = (Y.argmax(axis=1)==2) | (Y.argmax(axis=1)==3)
+    ## set to zero where object is not a QSO (the line confidence should be zero)
+    box_line[~w]=0
     box.append(np.concatenate([box_line, offset_line], axis=-1))
 
-ndata = X.shape[0]
-class_weight = {}
-for i in range(Y.shape[1]):
-    norm = Y[:,i].sum()
-    class_weight[i]=1
-    if norm > 0:
-        class_weight[i]=ndata*1./norm
-
-sample_weight_class = np.ones(ndata)
-sample_weight_qso = (Y.argmax(axis=1) == 2) | (Y.argmax(axis=1) == 3)
-try:
-    print args.model
-    model = getattr(models, args.model)(X[0,:,None].shape, classes = Y.shape[1], boxes = args.nboxes, reg_conv = args.reg_conv, reg_fc=args.reg_fc, nlines = len(args.lines))
-    print "compiling model {}".format(args.model)
-except:
-    print "loading model from {}".format(args.model)
+#try:
+if True:
+    print( args.model)
+    model = getattr(models, args.model)(X[0,:,None].shape, boxes = args.nboxes, reg_conv = args.reg_conv, reg_fc=args.reg_fc, nlines = len(args.lines))
+    print( "compiling model {}".format(args.model))
+#except:
+else:
+    print( "loading model from {}".format(args.model))
     model = load_model(args.model, custom_objects = {'custom_loss': models.custom_loss})
 
 if args.fine_tune:
-    for layer in model.layers[:-3]:
-        layer.trainable=False
+    for layer in model.layers:
+        if 'fc' not in layer.name:
+            layer.trainable=False
 
-loss = ['categorical_crossentropy', 'binary_crossentropy']
+loss = ['binary_crossentropy']
 for i in range(len(args.lines)):
     loss.append(models.custom_loss)
 
 ## add mean square error for redshift fit
-loss.append('mse')
-
 model.compile(optimizer='adam', loss=loss,metrics=['accuracy'])
 
-objective = [Y, bal]
-sample_weight_bal = sample_weight_qso
-sample_weight = [sample_weight_class, sample_weight_bal]
+objective = [bal]
 
 for b in box:
     objective.append(b)
-    sample_weight.append(sample_weight_qso)
 
-objective.append(z)
-sample_weight_z = sample_weight_qso
-sample_weight.append(sample_weight_z)
-
-print "starting fit"
-history = model.fit(X[:,:,None], objective, epochs = args.epochs, batch_size = args.batch, \
-        sample_weight = sample_weight, class_weight = class_weight)
+print( "starting fit")
+history = model.fit(X[:,:,None], objective, epochs = args.epochs, batch_size = args.batch)
 
 model.save(args.out)
 

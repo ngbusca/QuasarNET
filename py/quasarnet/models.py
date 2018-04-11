@@ -1,7 +1,9 @@
+from __future__ import print_function
 import numpy as np
 
 from keras.losses import mse
-from keras.layers import Input, Add, Dense, Activation, BatchNormalization, Flatten, Conv1D, AveragePooling1D, MaxPooling1D, concatenate, Reshape, Permute
+import keras.layers
+from keras.layers import Input, Add, Dense, Activation, BatchNormalization, Flatten, Conv1D, AveragePooling1D, MaxPooling1D, concatenate, Reshape, Permute, Lambda
 from keras.models import Model, load_model, save_model
 import keras.backend as K
 from keras.utils.vis_utils import model_to_dot
@@ -24,7 +26,7 @@ def QuasarNET(input_shape =  None, classes = 6, boxes = 13, nlines = 1, reg_conv
     strides = 2
     for stage in range(nlayers):
         nfilters = 100
-        print X.shape
+        print(X.shape)
         X = Conv1D(nfilters, filter_size, strides = strides, name = 'conv{}'.format(stage+1), kernel_initializer = glorot_uniform(), kernel_regularizer=regularizers.l2(reg_conv))(X)
         X = BatchNormalization(axis=-1)(X)
         X = Activation('relu')(X)
@@ -45,7 +47,7 @@ def QuasarNET(input_shape =  None, classes = 6, boxes = 13, nlines = 1, reg_conv
         X_box_aux = Dense(boxes, activation='sigmoid', name='fc_box_{}'.format(i), kernel_initializer = glorot_uniform())(X)
         X_offset_aux = Dense(boxes, activation='sigmoid', name='fc_offset_{}'.format(i), kernel_initializer = glorot_uniform())(X)
         X_box_aux = concatenate([X_box_aux, X_offset_aux], name="conc_box_{}".format(i))
-        print "adding additional lines", X_box_aux.shape
+        print( "adding additional lines", X_box_aux.shape)
         X_box.append(X_box_aux)
     
     for b in X_box:
@@ -65,9 +67,89 @@ def QuasarNET(input_shape =  None, classes = 6, boxes = 13, nlines = 1, reg_conv
 
     return model
 
+def QuasarNET2(input_shape =  None, boxes = 13, nlines = 1, reg_conv = 0., reg_fc=0):
+    
+    # Define the input as a tensor with shape input_shape
+    X_input = Input(input_shape)
+    X = X_input
+
+    nlayers=4
+    nfilters_max = 100
+    filter_size=10
+    strides = 2
+    for stage in range(nlayers):
+        nfilters = 100
+        print(X.shape)
+        X = Conv1D(nfilters, filter_size, strides = strides, name = 'conv{}'.format(stage+1), kernel_initializer = glorot_uniform(), kernel_regularizer=regularizers.l2(reg_conv))(X)
+        X = BatchNormalization(axis=-1)(X)
+        X = Activation('relu')(X)
+
+    # output layer
+    X = Flatten()(X)
+    X = Dense(nfilters_max, activation='linear', name='fc_common')(X)
+    X = BatchNormalization()(X)
+    X = Activation('relu', name='fc_activation')(X)
+
+    X_bal = Dense(1, activation='sigmoid', name='fc_bal', kernel_initializer = glorot_uniform())(X)
+
+    outputs = [X_bal]
+    X_box = []
+    for i in range(nlines):
+        #X_box_aux = Dense(boxes, activation='softmax', name='fc_box_{}'.format(i), kernel_initializer = glorot_uniform())(X)
+        X_box_aux = Dense(boxes, activation='sigmoid', name='fc_box_{}'.format(i), kernel_initializer = glorot_uniform())(X)
+        X_offset_aux = Dense(boxes, activation='sigmoid', name='fc_offset_{}'.format(i), kernel_initializer = glorot_uniform())(X)
+        X_box_aux = concatenate([X_box_aux, X_offset_aux], name="conc_box_{}".format(i))
+        print("adding additional lines", X_box_aux.shape)
+        X_box.append(X_box_aux)
+    
+    for b in X_box:
+        outputs.append(b)
+
+    # Create model
+    model = Model(inputs = X_input, outputs = outputs, name='QuasarNET2')
+
+    return model
+
+def QuasarNET3(input_shape =  None, boxes = 13, nlines = 1, reg_conv = 0., reg_fc=0):
+    
+    # Define the input as a tensor with shape input_shape
+    X_input = Input(input_shape)
+    X = X_input
+
+    nlayers=1
+    filter_size=input_shape[0]//boxes
+    strides = 1
+    for stage in range(nlayers):
+        nfilters = 2*nlines
+        print(X.shape)
+        X = Conv1D(nfilters, filter_size, strides = strides, name = 'conv{}'.format(stage+1), kernel_initializer = glorot_uniform(), kernel_regularizer=regularizers.l2(reg_conv))(X)
+        X = BatchNormalization(axis=-1)(X)
+        X = Activation('relu')(X)
+
+    print(X.shape)
+    X = Conv1D(2*nlines,1, strides=1, kernel_initializer = glorot_uniform(), kernel_regularizer=regularizers.l2(reg_conv))(X)
+    X = Conv1D(2*nlines, X.shape[1], strides=1, kernel_initializer = glorot_uniform(), kernel_regularizer=regularizers.l2(reg_conv))(X)
+    # output layer
+    print(X.shape)
+
+    X_bal = Dense(1, activation='sigmoid', name='fc_bal', kernel_initializer = glorot_uniform())(Flatten()(X))
+
+    outputs = [X_bal]
+    for iline in range(nlines):
+        outputs.append(Lambda(my_slice, arguments={'iline': iline})(X))
+
+    # Create model
+    model = Model(inputs = X_input, outputs = outputs, name='QuasarNET3')
+
+    return model
+
+def my_slice(X, **kwds):
+    iline = kwds['iline']
+    return K.concatenate([X[:,:,2*iline], X[:,:,2*iline+1]])
+
 def custom_loss(y_true, y_pred):
     assert y_pred.shape[1]%2 == 0
-    nboxes = y_pred.shape[1]/2
+    nboxes = y_pred.get_shape().as_list()[1]//2
     #loss_class = K.categorical_crossentropy(y_true[...,0:nboxes], y_pred[...,0:nboxes])
     loss_class = -K.mean(y_true[...,0:nboxes]*tf.log(K.clip(y_pred[...,0:nboxes], K.epsilon(), 1-K.epsilon())))
     loss_class -= K.mean((1-y_true[...,0:nboxes])*tf.log(K.clip(1-y_pred[...,0:nboxes], K.epsilon(), 1-K.epsilon())))
