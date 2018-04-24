@@ -9,7 +9,6 @@ from random import randint
 import glob
 from os.path import dirname
 
-from desitarget import desi_mask
 
 def read_sdrq(sdrq):
     '''
@@ -304,6 +303,7 @@ def export(fout,tids,data):
 
 
 def read_desi_spectra(fin):
+    from desitarget import desi_mask
     h=fitsio.FITS(fin)
     nbins = int((llmax-llmin)/dll)
     wqso = h[1]['DESI_TARGET'][:] & desi_mask.mask('QSO')

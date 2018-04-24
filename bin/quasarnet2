@@ -107,6 +107,7 @@ plot_model(model, to_file='model.png')
 SVG(model_to_dot(model).create(prog='dot', format='svg'))
 
 if args.hist is not None:
+    print("output to file: {}".format(args.hist))
     import os.path
     if os.path.isfile(args.hist):
         fout = fitsio.FITS(args.hist)
@@ -125,6 +126,6 @@ if args.hist is not None:
         fout = fitsio.FITS(args.hist,'rw')
         for v in history.history.values():
             cols.append(np.array(v))
-        fout.write(cols, names=history.history.keys())
+        fout.write(cols, names=list(history.history.keys()))
 
     fout.close()
