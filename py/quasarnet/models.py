@@ -90,9 +90,10 @@ def QuasarNET2(input_shape =  None, boxes = 13, nlines = 1, reg_conv = 0., reg_f
     X = BatchNormalization()(X)
     X = Activation('relu', name='fc_activation')(X)
 
-    X_bal = Dense(1, activation='sigmoid', name='fc_bal', kernel_initializer = glorot_uniform())(X)
+    #X_bal = Dense(1, activation='sigmoid', name='fc_bal', kernel_initializer = glorot_uniform())(X)
 
-    outputs = [X_bal]
+    #outputs = [X_bal]
+    outputs = []
     X_box = []
     for i in range(nlines):
         #X_box_aux = Dense(boxes, activation='softmax', name='fc_box_{}'.format(i), kernel_initializer = glorot_uniform())(X)

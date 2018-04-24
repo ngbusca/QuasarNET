@@ -27,6 +27,7 @@ parser.add_argument("--reg-fc", type = float, required=False, default = 0., help
 parser.add_argument("--out", type = str, required=True)
 parser.add_argument("--hist", type = str, required=False, default = None)
 parser.add_argument("--lines", type = str, required=False, default = ["LYA"], nargs="*")
+parser.add_argument("--bal", type = str, required=False, default = ["CIV(1548)"], nargs="*")
 parser.add_argument('--fine-tune', action='store_true',required=False)
 args = parser.parse_args()
 
@@ -69,13 +70,21 @@ for l in args.lines:
     box_line[~w]=0
     box.append(np.concatenate([box_line, offset_line], axis=-1))
 
-#try:
-if True:
+box_bal=[]
+for l in args.bal:
+    box_line, offset_line, weight_line = io.box_offset(z,nboxes=args.nboxes, line = l)
+    w = bal==1
+    ## set to zero where object is not a QSO (the line confidence should be zero)
+    box_line[~w]=0
+    box_bal.append(np.concatenate([box_line, offset_line], axis=-1))
+
+try:
+#if True:
     print( args.model)
-    model = getattr(models, args.model)(X[0,:,None].shape, boxes = args.nboxes, reg_conv = args.reg_conv, reg_fc=args.reg_fc, nlines = len(args.lines))
+    model = getattr(models, args.model)(X[0,:,None].shape, boxes = args.nboxes, reg_conv = args.reg_conv, reg_fc=args.reg_fc, nlines = len(args.lines)+len(args.bal))
     print( "compiling model {}".format(args.model))
-#except:
-else:
+except:
+#else:
     print( "loading model from {}".format(args.model))
     model = load_model(args.model, custom_objects = {'custom_loss': models.custom_loss})
 
@@ -84,16 +93,24 @@ if args.fine_tune:
         if 'fc' not in layer.name:
             layer.trainable=False
 
-loss = ['binary_crossentropy']
+#loss = ['binary_crossentropy']
+loss = []
 for i in range(len(args.lines)):
+    loss.append(models.custom_loss)
+
+for i in range(len(args.bal)):
     loss.append(models.custom_loss)
 
 ## add mean square error for redshift fit
 model.compile(optimizer='adam', loss=loss,metrics=['accuracy'])
 
-objective = [bal]
+#objective = [bal]
+objective = []
 
 for b in box:
+    objective.append(b)
+
+for b in box_bal:
     objective.append(b)
 
 print( "starting fit")
