@@ -207,7 +207,7 @@ def read_spall(spall):
     plate=spall[1]["PLATE"][:]
     mjd = spall[1]["MJD"][:]
     fid = spall[1]["FIBERID"][:]
-    tid = spall[1]["THING_ID"][:]
+    tid = spall[1]["THING_ID"][:].astype(int)
     specprim=spall[1]["SPECPRIMARY"][:]
 
     pmf2tid = {(p,m,f):t for p,m,f,t,s in zip(plate,mjd,fid,tid,specprim)}
@@ -340,7 +340,7 @@ def read_desi_spectra(fin):
     return utids, fl
 
 
-def read_spplate(fin, pmf2tid):
+def read_spplate(fin, fibers):
 
     '''
     reads data from spplates
@@ -354,42 +354,10 @@ def read_spplate(fin, pmf2tid):
     m = head["MJD"]
     
     fids = h[5]["FIBERID"][:]
-    wqso = np.zeros(len(fids), dtype=bool)
-    mask = [10,11,12,13,14,15,16,17,18,19,40,41,42,43,44]
-    target_bits = h[5]["BOSS_TARGET1"][:]
-    for i in mask:
-        wqso = wqso | (target_bits & 2**i)
+    wqso = np.in1d(fids, fibers)
+    fids=fids[wqso]
 
-    ## SEQUELS
-    try:
-        mask = [10, 11 ,12 ,13, 14, 15, 16, 17, 18]
-        target_bits = h[5]["EBOSS_TARGET0"][:]
-        for i in mask:
-            wqso = wqso | (target_bits & 2**i)
-    except:
-        pass
-
-    ## EBOSS
-    try:
-        mask = [10, 11 ,12 ,13, 14, 15, 16, 17, 18]
-        target_bits = h[5]["EBOSS_TARGET1"][:]
-        for i in mask:
-            wqso = wqso | (target_bits & 2**i)
-    except:
-        pass
-    wqso = wqso>0
-
-    print("INFO: found {} quasars in file {}".format(wqso.sum(), fin))
-    if wqso.sum()==None:
-        return
-
-    fids = fids[wqso]
-    try:
-        tids = np.array([pmf2tid[(p, m, f)] for f in fids])
-    except:
-        return None
-
-    nspec = len(tids)
+    nspec = len(fibers)
     nbins = int((llmax-llmin)/dll)
     fl = np.zeros((nspec, nbins)) 
     iv = np.zeros((nspec, nbins))
@@ -416,9 +384,11 @@ def read_spplate(fin, pmf2tid):
     print(fl.shape)
     wbad = iv==0
     w=wbad.sum(axis=1)>10
+    print('INFO: rejecting {} spectra with too many bad pixels'.format(w.sum()))
+    if (~w).sum()==0:
+        return None
     fl=fl[~w,:]
-    tids=tids[~w]
-    return tids, fl
+    return fids[~w],fl
 
 from .utils import absorber_IGM
 from scipy.interpolate import interp1d
