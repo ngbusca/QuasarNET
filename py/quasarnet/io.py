@@ -33,7 +33,7 @@ def read_sdrq(sdrq):
 
     return sdrq, pmf2tid
 
-def read_data(fi, sdrq, z_lim=2.1):
+def read_data(fi, sdrq, z_lim=2.1, z_conf=False):
     h=fitsio.FITS(fi)
     tids = h[1]["TARGETID"][:].astype(int)
 
@@ -48,6 +48,15 @@ def read_data(fi, sdrq, z_lim=2.1):
     observed = np.array(observed, dtype=bool)
     tids = tids[observed]
     Xtmp = Xtmp[observed]
+    print('found {} VI spectra out of {} '.format(observed.sum(),len(observed)))
+
+    ## if z_conf keep only z_conf_person = 3
+    if z_conf:
+        confident = [sdrq[t][1]==3 for t in tids]
+        confident = np.array(confident, dtype=bool)
+        tids = tids[confident]
+        Xtmp = Xtmp[confident]
+        print('found {} z_conf==3 out of {}'.format(confident.sum(), len(confident)))
 
     assert Xtmp.shape[0]==tids.shape[0]
     print("INFO: found {} spectra".format(len(tids)))

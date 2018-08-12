@@ -151,9 +151,22 @@ def my_slice(X, **kwds):
 def custom_loss(y_true, y_pred):
     assert y_pred.shape[1]%2 == 0
     nboxes = y_pred.get_shape().as_list()[1]//2
-    #loss_class = K.categorical_crossentropy(y_true[...,0:nboxes], y_pred[...,0:nboxes])
+
+    '''
+    ## note: categorical cross-entropy doesn't work here because y_true can be all zero
+    ## for spectra without emission lines
+
+    loss_class = K.categorical_crossentropy(y_true[...,0:nboxes], y_pred[...,0:nboxes])
+    loss_class = tf.divide(loss_class, tf.to_float(nboxes))
+    offset_true = y_true[...,nboxes:]
+    offset_pred = y_pred[...,nboxes:]
+    doffset = tf.subtract(offset_true,offset_pred)
+    loss_offset = K.mean(tf.to_float(nboxes)*y_true[...,:nboxes]*tf.square(doffset))
+    '''
+
     loss_class = -K.mean(y_true[...,0:nboxes]*tf.log(K.clip(y_pred[...,0:nboxes], K.epsilon(), 1-K.epsilon())))
     loss_class -= K.mean((1-y_true[...,0:nboxes])*tf.log(K.clip(1-y_pred[...,0:nboxes], K.epsilon(), 1-K.epsilon())))
+
     offset_true = y_true[...,nboxes:]
     offset_pred = y_pred[...,nboxes:]
     doffset = tf.subtract(offset_true, offset_pred)
