@@ -9,8 +9,10 @@ from quasarnet import models
 from keras.utils import plot_model
 from keras.utils.vis_utils import model_to_dot
 from keras.models import load_model
+from keras.optimizers import SGD,Adam
 
 from quasarnet import io
+#from quasarnet.optimizers import Adam
 
 parser = argparse.ArgumentParser()
 
@@ -20,16 +22,19 @@ parser.add_argument("--drq", type = str, required=False)
 parser.add_argument("--truth", type = str, required=False)
 parser.add_argument("--data", type = str, required=True,nargs="*")
 parser.add_argument("--epochs", type = int, required=False, default = 5)
-parser.add_argument("--batch", type = int, required=False, default = 256)
+parser.add_argument("--batch", type = int, required=False, default = 1024)
 parser.add_argument("--nboxes", type = int, required=False, default = 13)
 parser.add_argument("--ndata", type = int, required=False, default = None)
 parser.add_argument("--reg-conv", type = float, required=False, default = 0., help="L2 regularization")
 parser.add_argument("--reg-fc", type = float, required=False, default = 0., help="L2 regularization")
+parser.add_argument("--lr", type = float, required=False, default = 0.001, help="(initial) learning rate")
+parser.add_argument("--decay", type = float, required=False, default = 0., help="learning rate decay")
 parser.add_argument("--out", type = str, required=True)
 parser.add_argument("--hist", type = str, required=False, default = None)
 parser.add_argument("--lines", type = str, required=False, default = ["LYA"], nargs="*")
 parser.add_argument("--bal", type = str, required=False, default = ["CIV(1548)"], nargs="*")
 parser.add_argument('--fine-tune', action='store_true',required=False)
+
 args = parser.parse_args()
 
 drq = fitsio.FITS(args.drq)
@@ -119,7 +124,8 @@ for i in range(len(args.bal)):
     loss.append(models.custom_loss)
 
 ## add mean square error for redshift fit
-model.compile(optimizer='adam', loss=loss,metrics=['accuracy'])
+model.compile(optimizer=Adam(lr=args.lr, decay=args.decay, amsgrad=True), loss=loss,metrics=[])
+#model.compile(optimizer=SGD(lr=args.lr, decay=args.decay), loss=loss,metrics=[])
 
 #objective = [bal]
 objective = []

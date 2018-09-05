@@ -152,14 +152,14 @@ def custom_loss(y_true, y_pred):
     assert y_pred.shape[1]%2 == 0
     nboxes = y_pred.get_shape().as_list()[1]//2
 
-    loss_class = -K.mean(y_true[...,0:nboxes]*tf.log(K.clip(y_pred[...,0:nboxes], K.epsilon(), 1-K.epsilon())))
-    loss_class = tf.multiply(loss_class, tf.to_float(nboxes-1))
-    loss_class -= K.mean((1-y_true[...,0:nboxes])*tf.log(K.clip(1-y_pred[...,0:nboxes], K.epsilon(), 1-K.epsilon())))
+    N1 = tf.reduce_sum(y_true[...,0:nboxes])+K.epsilon()
+    N2 = tf.reduce_sum((1-y_true[...,0:nboxes]))+K.epsilon()
+    loss_class = -tf.reduce_sum(y_true[...,0:nboxes]*tf.log(K.clip(y_pred[...,0:nboxes], K.epsilon(), 1-K.epsilon())))/N1
+    loss_class -= tf.reduce_sum((1-y_true[...,0:nboxes])*tf.log(K.clip(1-y_pred[...,0:nboxes], K.epsilon(), 1-K.epsilon())))/N2
 
     offset_true = y_true[...,nboxes:]
     offset_pred = y_pred[...,nboxes:]
     doffset = tf.subtract(offset_true, offset_pred)
-    doffset = y_true[...,0:nboxes]*doffset
-    loss_offset = tf.multiply(tf.to_float(nboxes), K.mean(tf.square(doffset)))
+    loss_offset = tf.reduce_sum(y_true[...,0:nboxes]*tf.square(doffset))/N1
 
     return tf.add(loss_class, loss_offset)
