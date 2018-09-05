@@ -3,31 +3,119 @@
 import numpy as np
 from quasarnet import io
 import fitsio
+import sys
 
 import argparse
 
 parser=argparse.ArgumentParser()
 parser.add_argument('--spplates',type=str, nargs="+", required=True)
 parser.add_argument('--spall',type=str, required=True)
+parser.add_argument('--sdrq',type=str, required=False, default=None)
 parser.add_argument('--out',type=str, required=True)
 
 args=parser.parse_args()
 
-spall=io.read_spall(args.spall)
 
-tids = None
+## this is a dictionary (plate, mjd, fiberid) => thing_id
+print('INFO: reading spall')
+spall=fitsio.FITS(args.spall)
+print('INFO: done')
 
-for f in args.spplates:
-    aux = io.read_spplate(f, spall)
+tids_spall = spall[1]['THING_ID'][:]
+pmf_spall = zip(spall[1]['PLATE'][:],spall[1]['MJD'][:],spall[1]['FIBERID'][:])
+thid_db = {pmf:t for pmf,t in zip(pmf_spall,tids_spall)}
+
+if args.sdrq is not None:
+    print('INFO: reading sdrq')
+    sdrq = fitsio.FITS(args.sdrq)
+    tids_sdrq = sdrq[1]['THING_ID'][:]
+    print('INFO: done')
+    w = np.in1d(tids_spall, tids_sdrq) & (tids_spall>0)
+else:
+    print('getting quasars from target bits')
+    tb = {'BOSS_TARGET1':[10,11,12,13,14,15,16,17,18,19,40,41,42,43,44],
+        'EBOSS_TARGET0':[10,11,12,13,14,15,16,17,18,20,22,30,31,33,34,35,40],
+        'EBOSS_TARGET1':[9,10,11,12,13,14,15,16,17,18,30,31],
+        'EBOSS_TARGET2':[0,2,4,20,21,23,24,25,26,27,31,32,33,34,50,51,
+            52,53,54,55,56,57,58,59,60,61,62],
+        'ANCILLARY_TARGET1':[0,1,2,3,4,5,7,8,9,10,13,14,15,24,25,26,27,31,32,
+            33,53,54,55,56],
+        'ANCILLARY_TARGET2':[0,1,2,3,4,5,7,8,9,10,13,14,15,24,
+            25,26,27,31,32,33,53,54,55,56]
+        }
+    
+    wqso = np.zeros(len(tids_spall), dtype=bool)
+    for kw,val in tb.items():
+        mask = sum([2**b for b in val])
+        wqso_kw = (mask & spall[1][kw][:])>0
+        print('found {} quasar targets with target bits {}'.format(wqso_kw.sum(),kw))
+        wqso |= wqso_kw
+
+    print('found {} quasar targets'.format(wqso.sum()))
+print(wqso.shape)
+plate_mjd = {}
+print('populating dict')
+i=0
+for p,m,f in np.array(pmf_spall)[wqso]:
+    sys.stderr.write('\rINFO: populating dict: {}'.format(i*100/len(pmf_spall)))
+    k = (p,m)
+    if not k in plate_mjd:
+        plate_mjd[k] = []
+    plate_mjd[k].append(f)
+
+print('\ndone')
+fl = []
+tids = []
+plate = []
+mjd = []
+fibs = []
+
+nread=0
+for p,m in plate_mjd:
+    fname = 'spPlate-{}-{}.fits'.format(p,m)
+    f = [toto for toto in args.spplates if fname in toto]
+    if len(f)==0:
+        print('WARNING: file {} not found'.format(fname))
+        print('WARNING: args is {} '.format(args.spplates[0]))
+        sys.exit(1)
+    if len(f)>1:
+        print('WARNING: multiple files found', f)
+        sys.exit(1)
+    
+    f=f[0]
+    print('Reading file {}, nread={}, ntot={}'.format(f,nread,len(plate_mjd)))
+    nread+=1
+    fibers = plate_mjd[(p,m)]
+    aux = io.read_spplate(f, fibers)
     if aux is not None:
+        tids_plate = [thid_db[(p,m,fib)] for fib in aux[0]]
+        tids.append(tids_plate)
+        fl.append(aux[1])
+        plate.append([p]*len(aux[0]))
+        mjd.append([m]*len(aux[0]))
+        fibs.append(aux[0])
+
+        '''
         if tids is not None:
-            tids = np.concatenate([tids, aux[0]])
+            tids = np.concatenate([tids, tids_plate])
             fl = np.concatenate([fl,aux[1]])
+            plate = np.concatenate([plate, [p]*len(aux[0])])
+            mjd = np.concatenate([mjd, [m]*len(aux[0])])
+            fibs = np.concatenate([fibs, aux[0]])
         else:
-            tids = aux[0]
-            fl = aux[1]
+            tids = np.array(tids_plate)
+            fl = np.array(aux[1])
+            plate = np.array([p]*len(aux[0]))
+            mjd = np.array([m]*len(aux[0]))
+            fibs = np.array(aux[0])
+        '''
+tids = np.concatenate(tids)
+fl = np.concatenate(fl)
+plate=np.concatenate(plate)
+mjd = np.concatenate(mjd)
+fibs = np.concatenate(fibs)
 
 h=fitsio.FITS(args.out,'rw',clobber=True)
 h.write(fl)
-h.write([tids], names=['TARGETID'])
+h.write([tids, plate, mjd, fibs], names=['TARGETID','PLATE','MJD','FIBERID'])
 h.close()
