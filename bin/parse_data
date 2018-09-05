@@ -64,11 +64,13 @@ for p,m,f in np.array(pmf_spall)[wqso]:
     plate_mjd[k].append(f)
 
 print('\ndone')
-tids = None
-plate = None
-mjd = None
-fibs = None
+fl = []
+tids = []
+plate = []
+mjd = []
+fibs = []
 
+nread=0
 for p,m in plate_mjd:
     fname = 'spPlate-{}-{}.fits'.format(p,m)
     f = [toto for toto in args.spplates if fname in toto]
@@ -81,11 +83,19 @@ for p,m in plate_mjd:
         sys.exit(1)
     
     f=f[0]
-    print('Reading file {}'.format(f))
+    print('Reading file {}, nread={}, ntot={}'.format(f,nread,len(plate_mjd)))
+    nread+=1
     fibers = plate_mjd[(p,m)]
     aux = io.read_spplate(f, fibers)
     if aux is not None:
         tids_plate = [thid_db[(p,m,fib)] for fib in aux[0]]
+        tids.append(tids_plate)
+        fl.append(aux[1])
+        plate.append([p]*len(aux[0]))
+        mjd.append([m]*len(aux[0]))
+        fibs.append(aux[0])
+
+        '''
         if tids is not None:
             tids = np.concatenate([tids, tids_plate])
             fl = np.concatenate([fl,aux[1]])
@@ -98,6 +108,12 @@ for p,m in plate_mjd:
             plate = np.array([p]*len(aux[0]))
             mjd = np.array([m]*len(aux[0]))
             fibs = np.array(aux[0])
+        '''
+tids = np.concatenate(tids)
+fl = np.concatenate(fl)
+plate=np.concatenate(plate)
+mjd = np.concatenate(mjd)
+fibs = np.concatenate(fibs)
 
 h=fitsio.FITS(args.out,'rw',clobber=True)
 h.write(fl)
