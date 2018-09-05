@@ -18,11 +18,12 @@ args=parser.parse_args()
 
 ## this is a dictionary (plate, mjd, fiberid) => thing_id
 print('INFO: reading spall')
-spall=io.read_spall(args.spall)
+spall=fitsio.FITS(args.spall)
 print('INFO: done')
 
-tids_spall = np.array(list(spall.values()))
-pmf_spall = np.array(list(spall.keys()))
+tids_spall = spall[1]['THING_ID'][:]
+pmf_spall = zip(spall[1]['PLATE'][:],spall[1]['MJD'][:],spall[1]['FIBERID'][:])
+thid_db = {pmf:t for pmf,t in zip(pmf_spall,tids_spall)}
 
 if args.sdrq is not None:
     print('INFO: reading sdrq')
@@ -43,45 +44,58 @@ else:
             25,26,27,31,32,33,53,54,55,56]
         }
     
-    wqso = sp.zeros(len(tids_spall), dtype=bool)
+    wqso = np.zeros(len(tids_spall), dtype=bool)
     for kw,val in tb.items():
         mask = sum([2**b for b in val])
-        wqso |= ((mask & spall[1][kw][:])>0)
+        wqso_kw = (mask & spall[1][kw][:])>0
+        print('found {} quasar targets with target bits {}'.format(wqso_kw.sum(),kw))
+        wqso |= wqso_kw
 
     print('found {} quasar targets'.format(wqso.sum()))
-
+print(wqso.shape)
 plate_mjd = {}
 print('populating dict')
 i=0
-for p,m,f in pmf_spall[w]:
-    sys.stderr.write('\rINFO: populating dict: {}'.format(i*100/len(spall)))
+for p,m,f in np.array(pmf_spall)[wqso]:
+    sys.stderr.write('\rINFO: populating dict: {}'.format(i*100/len(pmf_spall)))
     k = (p,m)
     if not k in plate_mjd:
         plate_mjd[k] = []
     plate_mjd[k].append(f)
 
 print('\ndone')
-tids = None
-plate = None
-mjd = None
-fibs = None
+fl = []
+tids = []
+plate = []
+mjd = []
+fibs = []
 
+nread=0
 for p,m in plate_mjd:
     fname = 'spPlate-{}-{}.fits'.format(p,m)
     f = [toto for toto in args.spplates if fname in toto]
     if len(f)==0:
         print('WARNING: file {} not found'.format(fname))
+        print('WARNING: args is {} '.format(args.spplates[0]))
         sys.exit(1)
     if len(f)>1:
         print('WARNING: multiple files found', f)
         sys.exit(1)
     
     f=f[0]
-    print('Reading file {}'.format(f))
+    print('Reading file {}, nread={}, ntot={}'.format(f,nread,len(plate_mjd)))
+    nread+=1
     fibers = plate_mjd[(p,m)]
     aux = io.read_spplate(f, fibers)
     if aux is not None:
-        tids_plate = [spall[(p,m,fib)] for fib in aux[0]]
+        tids_plate = [thid_db[(p,m,fib)] for fib in aux[0]]
+        tids.append(tids_plate)
+        fl.append(aux[1])
+        plate.append([p]*len(aux[0]))
+        mjd.append([m]*len(aux[0]))
+        fibs.append(aux[0])
+
+        '''
         if tids is not None:
             tids = np.concatenate([tids, tids_plate])
             fl = np.concatenate([fl,aux[1]])
@@ -94,6 +108,12 @@ for p,m in plate_mjd:
             plate = np.array([p]*len(aux[0]))
             mjd = np.array([m]*len(aux[0]))
             fibs = np.array(aux[0])
+        '''
+tids = np.concatenate(tids)
+fl = np.concatenate(fl)
+plate=np.concatenate(plate)
+mjd = np.concatenate(mjd)
+fibs = np.concatenate(fibs)
 
 h=fitsio.FITS(args.out,'rw',clobber=True)
 h.write(fl)
