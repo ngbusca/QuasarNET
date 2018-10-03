@@ -123,7 +123,7 @@ llmax = np.log10(10000)
 dll = 1e-3
 
 nbins = int((llmax-llmin)/dll)
-nmasked_max = nbins
+nmasked_max = 10
 wave = 10**(llmin + np.arange(nbins)*dll)
 
 def read_spcframe(b_spcframe,r_spcframe):
@@ -383,7 +383,7 @@ def read_spplate(fin, fibers):
     fl = np.hstack((fl,iv))
     print(fl.shape)
     wbad = iv==0
-    w=wbad.sum(axis=1)>10
+    w=wbad.sum(axis=1)>nmasked_max
     print('INFO: rejecting {} spectra with too many bad pixels'.format(w.sum()))
     if (~w).sum()==0:
         return None
