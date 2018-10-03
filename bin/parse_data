@@ -38,10 +38,10 @@ else:
         'EBOSS_TARGET1':[9,10,11,12,13,14,15,16,17,18,30,31],
         'EBOSS_TARGET2':[0,2,4,20,21,23,24,25,26,27,31,32,33,34,50,51,
             52,53,54,55,56,57,58,59,60,61,62],
-        'ANCILLARY_TARGET1':[0,1,2,3,4,5,7,8,9,10,13,14,15,24,25,26,27,31,32,
-            33,53,54,55,56],
-        'ANCILLARY_TARGET2':[0,1,2,3,4,5,7,8,9,10,13,14,15,24,
-            25,26,27,31,32,33,53,54,55,56]
+#        'ANCILLARY_TARGET1':[0,1,2,3,4,5,7,8,9,10,13,14,15,24,25,26,27,31,32,
+#            33,53,54,55,56],
+#        'ANCILLARY_TARGET2':[0,1,2,3,4,5,7,8,9,10,13,14,15,24,
+#            25,26,27,31,32,33,53,54,55,56]
         }
     
     wqso = np.zeros(len(tids_spall), dtype=bool)
@@ -95,20 +95,6 @@ for p,m in plate_mjd:
         mjd.append([m]*len(aux[0]))
         fibs.append(aux[0])
 
-        '''
-        if tids is not None:
-            tids = np.concatenate([tids, tids_plate])
-            fl = np.concatenate([fl,aux[1]])
-            plate = np.concatenate([plate, [p]*len(aux[0])])
-            mjd = np.concatenate([mjd, [m]*len(aux[0])])
-            fibs = np.concatenate([fibs, aux[0]])
-        else:
-            tids = np.array(tids_plate)
-            fl = np.array(aux[1])
-            plate = np.array([p]*len(aux[0]))
-            mjd = np.array([m]*len(aux[0]))
-            fibs = np.array(aux[0])
-        '''
 tids = np.concatenate(tids)
 fl = np.concatenate(fl)
 plate=np.concatenate(plate)
