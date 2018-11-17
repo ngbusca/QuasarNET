@@ -33,48 +33,111 @@ def read_sdrq(sdrq):
 
     return sdrq, pmf2tid
 
-def read_data(fi, sdrq, z_lim=2.1):
-    h=fitsio.FITS(fi)
-    tids = h[1]["TARGETID"][:].astype(int)
+def read_truth(fi):
+    '''
+    reads a list of truth files and returns a truth dictionary
 
-    ## remove thing_id == -1 or not in sdrq
-    w = (tids != -1) & (np.in1d(tids, list(sdrq.keys())))
-    tids = tids[w]
-    Xtmp = h[0].read()
-    Xtmp = Xtmp[w]
+    Arguments:
+        fi -- list of truth files (list of string)
+
+    Returns:
+        truth -- dictionary of THING_ID: metadata instance
+
+    '''
     
-    ## remove zconf == 0 (not inspected)
-    observed = [sdrq[t][:2]!=(0,0) for t in tids]
-    observed = np.array(observed, dtype=bool)
-    tids = tids[observed]
-    Xtmp = Xtmp[observed]
+    class metadata:
+        pass
 
-    assert Xtmp.shape[0]==tids.shape[0]
-    print("INFO: found {} spectra".format(len(tids)))
+    cols = ['Z_VI','PLATE',
+            'MJD','FIBERID','CLASS_PERSON',
+            'Z_CONF_PERSON','BAL_FLAG_VI','BI_CIV']
 
-    mdata = np.average(Xtmp[:,:443], weights = Xtmp[:,443:], axis=1)
-    sdata = np.average((Xtmp[:,:443]-mdata[:,None])**2, weights = Xtmp[:,443:], axis=1)
+    truth = {}
+
+    for f in fi:
+        h = fitsio.FITS(f)
+        tids = h[1]['THING_ID'][:]
+        cols_dict = {c.lower():h[1][c][:] for c in cols}
+        h.close()
+        for i,t in enumerate(tids):
+            m = metadata()
+            for c in cols_dict:
+                setattr(m,c,cols_dict[c][i])
+            truth[t] = m
+
+    return truth
+    
+def read_data(fi, truth, z_lim=2.1):
+    '''
+    reads data from input file
+
+    Arguments:
+        fi -- list of data files (string iterable)
+        truth -- dictionary thind_id => metadata
+        z_lim -- hiz/loz cut (float)
+
+    Returns:
+        tids -- list of thing_ids
+        X -- spectra reformatted to be fed to the network (numpy array)
+        Y -- truth vector (nqso, 5): 
+                           STAR = (1,0,0,0,0), GAL = (0,1,0,0,0)
+                           QSO_LZ = (0,0,1,0,0), QSO_HZ = (0,0,0,1,0)
+                           BAD = (0,0,0,0,1)
+        z -- redshift (numpy array)
+        bal -- 1 if bal, 0 if not (numpy array)
+    '''
+    
+    tids = []
+    X = []
+    Y = []
+    z = []
+    bal = []
+
+    for f in fi:
+        h=fitsio.FITS(f)
+        aux_tids = h[1]["TARGETID"][:].astype(int)
+
+        ## remove thing_id == -1 or not in sdrq
+        w = (aux_tids != -1) & (np.in1d(aux_tids, list(truth.keys())))
+        aux_tids = aux_tids[w]
+        aux_X = h[0].read()
+        aux_X = aux_X[w]
+    
+        ## remove zconf == 0 (not inspected)
+        observed = [(truth[t].class_person>0) or (truth[t].z_conf_person>0) for t in aux_tids]
+        observed = np.array(observed, dtype=bool)
+        aux_tids = aux_tids[observed]
+        aux_X = aux_X[observed]
+        
+        X.append(aux_X)
+        tids.append(aux_tids)
+        
+        print("INFO: found {} spectra in file {}".format(aux_tids.shape, f))
+
+    tids = np.concatenate(tids)
+    X = np.concatenate(X)
+    mdata = np.average(X[:,:443], weights = X[:,443:], axis=1)
+    sdata = np.average((X[:,:443]-mdata[:,None])**2, 
+            weights = X[:,443:], axis=1)
     sdata=np.sqrt(sdata)
-    Xtmp=Xtmp[:,:443]-mdata[:,None]
-    Xtmp/=sdata[:,None]
-    X = np.zeros(Xtmp.shape)
-    X[:] = Xtmp
-    del Xtmp
 
+    X = X[:,:443]-mdata[:,None]
+    X /= sdata[:,None]
 
     ## fill redshifts
     z = np.zeros(X.shape[0])
-    z[:] = [sdrq[t][2] for t in tids]
+    z[:] = [truth[t].z_vi for t in tids]
 
     ## fill bal 
     bal = np.zeros(X.shape[0])
-    bal[:] = [sdrq[t][:2]==(30, 3) for t in tids]
+    bal[:] = [(truth[t].bal_flag_vi*(truth[t].bi_civ>0))-\
+            (not truth[t].bal_flag_vi)*(truth[t].bi_civ==0) for t in tids]
     
     ## fill classes
     ## classes: 0 = STAR, 1=GALAXY, 2=QSO_LZ, 3=QSO_HZ, 4=BAD (zconf != 3)
     nclasses = 5
-    sdrq_class = np.array([sdrq[t][0] for t in tids])
-    z_conf = np.array([sdrq[t][1] for t in tids])
+    sdrq_class = np.array([truth[t].class_person for t in tids])
+    z_conf = np.array([truth[t].z_conf_person for t in tids])
 
     Y = np.zeros((X.shape[0],nclasses))
     ## STAR
@@ -294,7 +357,7 @@ def read_exposures(plates,pmf2tid,nplates=None, random_exp=False):
 
     return tids, data
 
-def export(fout,tids,data):
+def export_data(fout,tids,data):
     h = fitsio.FITS(fout,"rw",clobber=True)
     h.write(data,extname="DATA")
     tids = np.array(tids)
