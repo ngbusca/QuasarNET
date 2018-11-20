@@ -116,10 +116,24 @@ def read_data(fi, truth, z_lim=2.1):
 
     tids = np.concatenate(tids)
     X = np.concatenate(X)
+
+    we = X[:,443:]
+    w = we.sum(axis=1)==0
+    print("INFO: removing {} spectra with zero weights".format(w.sum()))
+    X = X[~w]
+    tids = tids[~w]
+
     mdata = np.average(X[:,:443], weights = X[:,443:], axis=1)
     sdata = np.average((X[:,:443]-mdata[:,None])**2, 
             weights = X[:,443:], axis=1)
     sdata=np.sqrt(sdata)
+
+    w = sdata == 0
+    print("INFO: removing {} spectra with zero flux".format(w.sum()))
+    X = X[~w]
+    tids = tids[~w]
+    mdata = mdata[~w]
+    sdata = sdata[~w]
 
     X = X[:,:443]-mdata[:,None]
     X /= sdata[:,None]
@@ -186,8 +200,8 @@ llmax = np.log10(10000)
 dll = 1e-3
 
 nbins = int((llmax-llmin)/dll)
-nmasked_max = 10
 wave = 10**(llmin + np.arange(nbins)*dll)
+nmasked_max = len(wave)+1
 
 def read_spcframe(b_spcframe,r_spcframe):
     data = []
@@ -427,7 +441,7 @@ def read_spplate(fin, fibers):
     nbins = fl.shape[1]
 
     fl_aux = h[0].read()[wqso,:]
-    iv_aux = h[1].read()[wqso,:]*(h[2].read()[wqso]==0)
+    iv_aux = h[1].read()[wqso,:]*((h[2].read()[wqso]&2**25)==0)
     wave = 10**(c0 + c1*np.arange(fl_aux.shape[1]))
     bins = np.floor((np.log10(wave)-llmin)/dll).astype(int)
     w = (bins>=0) & (bins<nbins)
