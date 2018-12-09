@@ -1,0 +1,6 @@
+numpy
+scipy
+h5py
+fitsio
+tensorflow
+keras >= 2.2.4

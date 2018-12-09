@@ -1,0 +1,142 @@
+#!/usr/bin/env python
+
+import glob
+from keras.models import load_model
+from quasarnet.models import custom_loss
+from quasarnet.io import read_sdrq, read_data, read_desi_truth
+from scipy.interpolate import interp1d
+from numpy import in1d, array
+from quasarnet.io import read_data
+from quasarnet.utils import absorber_IGM, process_preds
+import fitsio
+import argparse
+import numpy as np
+
+parser=argparse.ArgumentParser()
+parser.add_argument('--model',type=str,required=True,
+        help='the model, output of qn_train')
+
+parser.add_argument('--data',type=str,required=True,nargs="*",
+        help='the data to be inspected, output of parse_data')
+
+parser.add_argument('--data-training',type=str,required=True,
+        help='the data used for training')
+
+parser.add_argument('--spall',type=str,required=True,
+        help='the spall file (same pipeline version as the --data')
+
+parser.add_argument('--lines',type=str,nargs="*",
+        required=False,default=['LYA', 'CIV(1548)', 
+            'CIII(1909)', 'MgII(2796)' ,'Hbeta', 'Halpha'],
+        help='the list of emission lines used to train the model'
+        )
+
+parser.add_argument('--lines-bal',type=str,nargs="*",
+        required=False,default=['CIV(1548)'],
+        help='the list of BAL lines'
+        )
+
+parser.add_argument('--c-th',type=float,required=False,default=0.4,
+        help='threshold confidence value for a line-detection')
+
+parser.add_argument('--n-th',type=int,required=False,default=1,
+        help='the threshold number of confident lines to define a quasar')
+
+parser.add_argument('--out-suffix',type=str,required=True,
+        help='the output prefix')
+
+args=parser.parse_args()
+
+tids,X,plate,mjd,fid = read_data(args.data, return_pmf=True)
+
+m=args.model
+print('loading model {}'.format(m))
+model=load_model(m, custom_objects={'custom_loss':custom_loss})
+
+print('predicting...')
+aux=model.predict(X[:,:,None])
+print('prediction done')
+
+c_line,z_line,zbest,c_line_bal,z_line_bal =\
+        process_preds(aux, args.lines, args.lines_bal)
+
+isqso = (c_line>args.c_th).sum(axis=0)>=args.n_th
+
+spall = fitsio.FITS(args.spall)
+tids_spall = spall[1]['THING_ID'][:]
+plate_spall = spall[1]['PLATE'][:]
+mjd_spall = spall[1]['MJD'][:]
+fid_spall = spall[1]['FIBERID'][:]
+ra_spall = spall[1]['RA'][:]
+dec_spall = spall[1]['DEC'][:]
+sprim_spall = spall[1]['SPECPRIMARY'][:]
+spall_dict = {(p,m,f):t for t,p,m,f in zip(tids_spall, 
+    plate_spall, mjd_spall, fid_spall)}
+
+dic_spall = {t:(r,d,s) for t,r,d,s in zip(tids_spall,ra_spall,
+    dec_spall,sprim_spall)}
+
+spall.close()
+    
+h_train=fitsio.FITS(args.data_training)
+plate_train = h_train[1]['PLATE'][:]
+mjd_train = h_train[1]['MJD'][:]
+fid_train = h_train[1]['FIBERID'][:]
+
+tids_train = [spall_dict[(p,m,f)] for p,m,f in zip(plate_train,
+    mjd_train, fid_train)]
+
+in_train = in1d(tids, tids_train)
+
+print('INFO: found {} spectra in the training sample'.format(in_train.sum()))
+
+hout=fitsio.FITS('qnAll-'+args.out_suffix+'.fits','rw',clobber=True)
+
+cols = [tids]
+names = ['THING_ID']
+cols += [plate,mjd,fid]
+names += ['PLATE','MJD','FIBERID']
+    
+cols += [zbest, isqso.astype(int), in_train.astype(int)]
+names += ['ZBEST','IS_QSO','IN_TRAIN']
+cols.append(c_line.T)
+names.append('C_LINES')
+cols.append(z_line.T)
+names.append('Z_LINES')
+header=[{'name':'LINE_{}'.format(il),'value':absorber_IGM[l],'comment':l} for il,l in enumerate(args.lines)]
+header=[{'name':'LINE_BAL_{}'.format(il),'value':absorber_IGM[l],'comment':l} for il,l in enumerate(args.lines_bal)]
+
+cols.append(c_line_bal.T)
+names.append('C_LINES_BAL')
+cols.append(z_line_bal.T)
+names.append('Z_LINES_BAL')
+hout.write(cols,names=names,header=header)
+
+hout.close()
+
+hout = fitsio.FITS('DRQ_QN-'+args.out_suffix+'.fits',
+            'rw',clobber=True)
+ra = [dic_spall[t][0] for t in tids]
+ra = array(ra)
+
+dec = [dic_spall[t][1] for t in tids]
+dec = array(dec)
+
+sprim = [dic_spall[t][2] for t in tids]
+sprim = array(sprim)
+
+isqso = isqso & (sprim==1)
+
+print('INFO: found {} unique quasars'.format(isqso.sum()))
+
+cols = [tids[isqso]]
+names = ['THING_ID']
+cols += [plate[isqso], mjd[isqso], fid[isqso]]
+names += ['PLATE','MJD','FIBERID']
+
+isbal = (c_line_bal>args.c_th).sum(axis=0)>=1
+cols += [zbest[isqso], ra[isqso], dec[isqso], isbal[isqso]]
+names += ['Z','RA','DEC','BI_CIV']
+
+hout.write(cols, names=names)
+

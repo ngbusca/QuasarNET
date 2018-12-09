@@ -1,0 +1,62 @@
+#!/usr/bin/env python
+import argparse
+import numpy as np
+import fitsio
+
+from quasarnet.models import QuasarNET, custom_loss
+from keras.optimizers import Adam
+from quasarnet import io
+
+parser = argparse.ArgumentParser()
+
+parser.add_argument("-t","--truth", type = str, required=False,nargs="*")
+parser.add_argument("-d","--data", type = str, required=True,nargs="*")
+parser.add_argument("-e","--epochs", type = int,
+        required=False, default = 5)
+parser.add_argument("-o","--out-prefix", type = str, required=True)
+parser.add_argument("-l","--lines", type = str,
+        required=False, default = ["LYA"], nargs="*")
+parser.add_argument("-b","--bal", type = str,
+        required=False, default = ["CIV(1548)"], nargs="*")
+parser.add_argument("--decay", type = float, required=False, 
+        default = 0.)
+
+args = parser.parse_args()
+
+truth = io.read_truth(args.truth)
+tids,X,Y,z,bal = io.read_data(args.data, truth)
+
+model = QuasarNET(
+        X[0,:,None].shape, 
+        nlines=len(args.lines)+len(args.bal)
+        )
+
+loss = []
+for i in args.lines:
+    loss.append(custom_loss)
+
+for i in args.bal:
+    loss.append(custom_loss)
+
+adam = Adam(decay=args.decay)
+model.compile(optimizer=adam, loss=loss, metrics=[])
+
+objective = io.objective(z,Y,lines=args.lines, 
+        lines_bal=args.lines_bal)
+
+print( "starting fit")
+history = model.fit(X[:,:,None], objective,
+        epochs = args.epochs,
+        batch_size = 256,
+        sample_weight = sample_weight)
+
+model.save(args.out_prefix+".h5")
+model.summary()
+
+cols = []
+fout = fitsio.FITS(args.out_prefix+"_hist.fits",'rw',clobber=True)
+for v in history.history.values():
+    cols.append(np.array(v))
+
+fout.write(cols, names=list(history.history.keys()))
+fout.close()

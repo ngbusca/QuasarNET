@@ -23,7 +23,6 @@ def QuasarNET(input_shape =  None, boxes = 13, nlines = 1, reg_conv = 0., reg_fc
     strides = 2
     for stage in range(nlayers):
         nfilters = 100
-        print(X.shape)
         X = Conv1D(nfilters, filter_size, strides = strides,
                 name = 'conv_{}'.format(stage+1),
                 kernel_initializer=glorot_uniform(),
