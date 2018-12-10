@@ -1,4 +1,5 @@
-# QuasarNET: convolutional neural network for redshifting and classification of astrophysical spectra
+# QuasarNET
+## A convolutional neural network for redshifting and classification of astrophysical spectra
 
 ![architecture](etc/architecture.png)
 
