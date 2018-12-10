@@ -3,7 +3,7 @@
 
 ![architecture](etc/architecture.png)
 
-Installation instructions (requires python3):
+#### Installation instructions (requires python3):
 
 * on a standard system:
 ```bash
@@ -23,7 +23,7 @@ git clone https://github.com/ngbusca/QuasarNET.git
 cd QuasarNET
 python setup.py install
 ```
-#### downloading the data
+#### Download the data
 These data are a reprocessing of data release 12 (DR12) of the Sloan Digital Sky Survey (https://www.sdss.org/dr12/)
 
 They are available on Kaggle: https://www.kaggle.com/ngbusca/qnet_data
@@ -38,7 +38,7 @@ kaggle datasets download ngbusca/qnet_data
 unzip qnet_data.zip
 chmod 600 *
 ```
-#### download the pre-trained weights¶
+#### Download the pre-trained weights¶
 The pre-trained weights are available at: https://www.kaggle.com/ngbusca/qnet_trained_models
 
 Download the weights to the QuasarNET/weights/ directory, unzip the file and set read/write permissions (skip the `kaggle datasets...` line if you've downloaded the data through the website).
