@@ -29,7 +29,7 @@ They are available on Kaggle: https://www.kaggle.com/ngbusca/qnet_data
 
 A practical way to download the data is to use the kaggle-api, which will allow you to do it from the command line. Otherwise you can simply click the download link on the website.
 
-Download the data to the QuasarNET/data/ directory, unzip the file and set read/write permissions (skip the kaggle datasets... line if you've downloaded the data through the website).
+Download the data to the QuasarNET/data/ directory, unzip the file and set read/write permissions (skip the `kaggle datasets...` line if you've downloaded the data through the website).
 
 ```bash
 cd data
@@ -40,7 +40,7 @@ chmod 600 *
 #### download the pre-trained weights¶
 The pre-trained weights are available at: https://www.kaggle.com/ngbusca/qnet_trained_models
 
-Download the weights to the QuasarNET/weights/ directory, unzip the file and set read/write permissions (skip the kaggle datasets... line if you've downloaded the data through the website).
+Download the weights to the QuasarNET/weights/ directory, unzip the file and set read/write permissions (skip the `kaggle datasets...` line if you've downloaded the data through the website).
 
 ```bash
 cd weights
