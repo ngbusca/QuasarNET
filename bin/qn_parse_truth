@@ -1,0 +1,52 @@
+#!/usr/bin/env python
+
+import numpy as np
+import fitsio
+import argparse
+
+parser = argparse.ArgumentParser()
+
+parser.add_argument('--sdrq', type=str, help='Superset_DRQ file',
+        required=True)
+
+parser.add_argument('--drq', type=str, help='DRQ file',
+        required=True)
+
+parser.add_argument('--out', type=str, help='output file',
+        required=True)
+
+args = parser.parse_args()
+
+h = fitsio.FITS(args.sdrq)
+
+colnames = ['THING_ID','Z_VI','PLATE','MJD','FIBERID',\
+        'CLASS_PERSON','Z_CONF_PERSON']
+
+cols = []
+for c in colnames:
+    cols.append(h[1][c][:])
+
+h.close()
+
+h = fitsio.FITS(args.drq)
+tids = h[1]['THING_ID'][:]
+bal_flag_vi_drq = h[1]['BAL_FLAG_VI'][:]
+bi_civ_drq = h[1]['BI_CIV'][:]
+h.close()
+
+drq = {t:(bfv,bi) for t,bfv,bi in zip(tids,bal_flag_vi_drq,bi_civ_drq)}
+
+w = np.in1d(cols[0], tids)
+
+bal_flag_vi = np.zeros(len(cols[0]))
+bal_flag_vi[w] = np.array([drq[t][0] for t in cols[0][w]])
+
+bi_civ = np.zeros(len(cols[0]))
+bi_civ[w] = np.array([drq[t][1] for t in cols[0][w]])
+
+cols += [bal_flag_vi, bi_civ]
+colnames += ['BAL_FLAG_VI', 'BI_CIV']
+
+h = fitsio.FITS(args.out, 'rw', clobber=True)
+h.write(cols, names=colnames)
+h.close()

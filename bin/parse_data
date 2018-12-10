@@ -22,7 +22,8 @@ spall=fitsio.FITS(args.spall)
 print('INFO: done')
 
 tids_spall = spall[1]['THING_ID'][:]
-pmf_spall = zip(spall[1]['PLATE'][:],spall[1]['MJD'][:],spall[1]['FIBERID'][:])
+plate_quality = spall[1]['PLATEQUALITY'][:]
+pmf_spall = list(zip(spall[1]['PLATE'][:],spall[1]['MJD'][:],spall[1]['FIBERID'][:]))
 thid_db = {pmf:t for pmf,t in zip(pmf_spall,tids_spall)}
 
 if args.sdrq is not None:
@@ -38,10 +39,10 @@ else:
         'EBOSS_TARGET1':[9,10,11,12,13,14,15,16,17,18,30,31],
         'EBOSS_TARGET2':[0,2,4,20,21,23,24,25,26,27,31,32,33,34,50,51,
             52,53,54,55,56,57,58,59,60,61,62],
-#        'ANCILLARY_TARGET1':[0,1,2,3,4,5,7,8,9,10,13,14,15,24,25,26,27,31,32,
-#            33,53,54,55,56],
-#        'ANCILLARY_TARGET2':[0,1,2,3,4,5,7,8,9,10,13,14,15,24,
-#            25,26,27,31,32,33,53,54,55,56]
+        'ANCILLARY_TARGET1':[6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,22,
+            23,24,25,26,27,28,29,30,31,5051,52,53,54,55,58,59],
+        'ANCILLARY_TARGET2':[0,1,2,3,4,5,7,8,9,10,13,14,15,24,
+            25,26,27,31,32,33,53,54,55,56]
         }
     
     wqso = np.zeros(len(tids_spall), dtype=bool)
@@ -52,7 +53,10 @@ else:
         wqso |= wqso_kw
 
     print('found {} quasar targets'.format(wqso.sum()))
-print(wqso.shape)
+
+    wqso &= plate_quality == b'good'
+    print('after rejecting BAD plates: {}'.format(wqso.sum()))
+
 plate_mjd = {}
 print('populating dict')
 i=0
