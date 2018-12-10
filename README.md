@@ -1,6 +1,6 @@
 # QuasarNET: convolutional neural network for redshifting and classification of astrophysical spectra
 
-!(etc/architecture.png)
+![architecture](etc/architecture.png)
 
 Installation instructions (requires python3):
 
