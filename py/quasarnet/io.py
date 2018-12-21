@@ -430,12 +430,21 @@ def export_data(fout,tids,data):
     h.close()
 
 
-def read_desi_spectra(fin):
-    from desitarget import desi_mask
+def read_desi_spectra(fin, ignore_quasar_mask=False):
+    try:
+        from desitarget import desi_mask
+        quasar_mask = desi_mask.mask('QSO')
+    except:
+        print("WARN: can't load desi_mask, ignoring mask!")
+        quasar_mask = 1
+
     h=fitsio.FITS(fin)
     nbins = int((llmax-llmin)/dll)
-    wqso = h[1]['DESI_TARGET'][:] & desi_mask.mask('QSO')
+    wqso = h[1]['DESI_TARGET'][:] & quasar_mask
+    if ignore_quasar_mask:
+        wqso |= 1
     wqso = wqso>0
+    print("INFO: found {} quasar targets".format(wqso.sum()))
     tids = h[1]["TARGETID"][:][wqso]
     utids = np.unique(tids)
 
@@ -464,7 +473,7 @@ def read_desi_spectra(fin):
     fl[w]/=iv[w]
     fl = np.hstack((fl,iv))
 
-    print("INFO: founds {} qso targets".format(wqso.sum()))
+    print("INFO: founds {} good spectra".format(wqso.sum()))
     return utids, fl
 
 
