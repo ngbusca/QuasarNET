@@ -16,7 +16,7 @@ parser.add_argument("-e","--epochs", type = int,
 parser.add_argument("-o","--out-prefix", type = str, required=True)
 parser.add_argument("-l","--lines", type = str,
         required=False, default = ["LYA"], nargs="*")
-parser.add_argument("-b","--bal", type = str,
+parser.add_argument("-b","--lines-bal", type = str,
         required=False, default = ["CIV(1548)"], nargs="*")
 parser.add_argument("--decay", type = float, required=False, 
         default = 0.)
@@ -28,24 +28,24 @@ tids,X,Y,z,bal = io.read_data(args.data, truth)
 
 model = QuasarNET(
         X[0,:,None].shape, 
-        nlines=len(args.lines)+len(args.bal)
+        nlines=len(args.lines)+len(args.lines_bal)
         )
 
 loss = []
 for i in args.lines:
     loss.append(custom_loss)
 
-for i in args.bal:
+for i in args.lines_bal:
     loss.append(custom_loss)
 
 adam = Adam(decay=args.decay)
 model.compile(optimizer=adam, loss=loss, metrics=[])
 
-objective = io.objective(z,Y,lines=args.lines, 
+box, sample_weight = io.objective(z,Y,bal,lines=args.lines, 
         lines_bal=args.lines_bal)
 
 print( "starting fit")
-history = model.fit(X[:,:,None], objective,
+history = model.fit(X[:,:,None], box,
         epochs = args.epochs,
         batch_size = 256,
         sample_weight = sample_weight)

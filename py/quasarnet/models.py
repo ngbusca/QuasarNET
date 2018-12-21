@@ -1,7 +1,7 @@
 from __future__ import print_function
 import numpy as np
 
-from keras.layers import Input, Dense, Activation, BatchNormalization, Flatten, Conv1D, concatenate
+from keras.layers import Input, Dense, Activation, BatchNormalization, Flatten, Conv1D, concatenate, Lambda
 from keras.models import Model
 import keras.backend as K
 from keras.utils.vis_utils import model_to_dot
@@ -44,6 +44,8 @@ def QuasarNET(input_shape =  None, boxes = 13, nlines = 1, reg_conv = 0., reg_fc
         X_offset_aux = Dense(boxes, activation='sigmoid',
                 name='fc_offset_{}'.format(i), 
                 kernel_initializer=glorot_uniform())(X)
+        ## rescale the offsets to output between -0.1 and 1.1
+        X_offset_aux = Lambda(lambda x:-0.1+1.2*x)(X_offset_aux)
         X_box_aux = concatenate([X_box_aux, X_offset_aux], 
                 name="conc_box_{}".format(i))
         X_box.append(X_box_aux)
