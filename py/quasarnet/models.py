@@ -41,7 +41,8 @@ def QuasarNET(input_shape =  None, boxes = 13, nlines = 1, reg_conv = 0., reg_fc
         X_box_aux = Dense(boxes, activation='sigmoid', 
                 name='fc_box_{}'.format(i), 
                 kernel_initializer=glorot_uniform())(X)
-        X_offset_aux = Dense(boxes, activation='sigmoid',
+        #X_offset_aux = Dense(boxes, activation='sigmoid',
+        X_offset_aux = Dense(boxes, activation='linear',
                 name='fc_offset_{}'.format(i), 
                 kernel_initializer=glorot_uniform())(X)
         ## rescale the offsets to output between -0.1 and 1.1
