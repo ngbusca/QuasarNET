@@ -5,11 +5,11 @@ app.config["DEBUG"] = True
 
 
 @app.route('/instructions', methods=['GET'])
-def home():
+def instructions():
     return "<h1>instructions here</h1><p> QuasarNET rest-api instructions.</p>"
 
 @app.route('/predict')
-def home():
+def predict():
     flux = request.args.get('flux')
     return "<h1>instructions here</h1><p> QuasarNET rest-api instructions. {} </p>".format(flux)
 
