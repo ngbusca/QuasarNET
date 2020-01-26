@@ -8,4 +8,5 @@ app.config["DEBUG"] = True
 def home():
     return "<h1>instructions here</h1><p> QuasarNET rest-api instructions.</p>"
 
-app.run()
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0')
