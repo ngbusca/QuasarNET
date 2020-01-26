@@ -2,5 +2,5 @@ numpy
 scipy
 h5py
 fitsio
-tensorflow
+tensorflow >= 2
 keras >= 2.2.4
