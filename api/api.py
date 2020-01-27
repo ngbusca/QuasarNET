@@ -1,5 +1,5 @@
 import flask
-from flask import request, 
+from flask import request
 import numpy as np
 
 from quasarnet import io
