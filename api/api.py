@@ -9,7 +9,7 @@ from quasarnet.models import custom_loss
 
 app = flask.Flask(__name__)
 app.config["DEBUG"] = True
-model = load_model('weights/qn_train_0.h5', custom_objects = {'custom_loss':custom_loss})
+model = load_model('QuasarNET/weights/qn_train_0.h5', custom_objects = {'custom_loss':custom_loss})
 
 @app.route('/instructions', methods=['GET'])
 def instructions():
