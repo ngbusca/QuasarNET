@@ -1,5 +1,5 @@
 import flask
-from flask import request, g, Flask
+from flask import request, 
 import numpy as np
 
 from quasarnet import io
@@ -7,13 +7,13 @@ from quasarnet.utils import process_preds
 from tensorflow.keras.models import load_model
 from quasarnet.models import custom_loss
 
-app = flask.Flask(__name__)
+app = flask.Flask(__name__, static_url_path='QuasarNET/api/')
 app.config["DEBUG"] = True
 model = load_model('QuasarNET/weights/qn_train_0.h5', custom_objects = {'custom_loss':custom_loss})
 
 @app.route('/instructions', methods=['GET'])
 def instructions():
-    return "<h1>instructions here</h1><p> QuasarNET rest-api instructions.</p>"
+    app.send_static_file('instructions.html')
 
 @app.route('/predict', methods=['POST'])
 def predict():
