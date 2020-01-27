@@ -7,7 +7,7 @@ from quasarnet.utils import process_preds
 from tensorflow.keras.models import load_model
 from quasarnet.models import custom_loss
 
-app = flask.Flask(__name__, static_url_path='QuasarNET/api/')
+app = flask.Flask(__name__, static_url_path='/QuasarNET/api/')
 app.config["DEBUG"] = True
 model = load_model('QuasarNET/weights/qn_train_0.h5', custom_objects = {'custom_loss':custom_loss})
 
