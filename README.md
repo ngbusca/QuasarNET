@@ -38,7 +38,7 @@ kaggle datasets download ngbusca/qnet_data
 unzip qnet_data.zip
 chmod 600 *
 ```
-#### Download the pre-trained weights¶
+#### Download the pre-trained weights
 The pre-trained weights are available at: https://www.kaggle.com/ngbusca/qnet_trained_models
 
 Download the weights to the QuasarNET/weights/ directory, unzip the file and set read/write permissions (skip the `kaggle datasets...` line if you've downloaded the data through the website).
