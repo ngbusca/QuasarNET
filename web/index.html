@@ -1,0 +1,165 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+	<title>QuasarNET</title>
+	<link rel="stylesheet" type="text/css" href="css/qnet_styles.css">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+</head>
+<body>
+
+<!-- Side navigation -->
+<div class="sidenav">
+  <a href="#quasarnet">home</a>
+  <a href="#about">about</a>
+
+  <button class="dropdown-btn">use QuasarNET
+    <i class="fa fa-caret-down"></i>
+  </button>
+
+  <div class="dropdown-container">
+    <a href="#tryonline">try it online!</a>
+    <a href="#instructions">or install on your system</a>
+  </div>
+  
+  <a href="#contact">contact</a>
+  
+</div>
+
+<!-- Page content -->
+<div class="main">
+	<h1 id="quasarnet">QuasarNET</h1>
+	<img src="pics/architecture.png" alt="architecture" style="width:inherit;" />
+</div>
+
+<div class="panel" id="about">
+	<p><span style="font-weight: bold;">Computer vision meets astrophysics!</span> QuasarNET uses computer vision techniques to identify and locate emission lines in astrophysical spectra. Find out more: <a href="https://arxiv.org/abs/1808.09955"> arXiv:1808.09955 </a></p>
+</div>
+
+<div class="panel" id="tryonline" style="height: 400pt">
+	<h3>QuasarNET online server</h3>
+	<p>No installation required! Get your predictions directly from the QuasarNET server.</p>
+	<h4>From the command line:</h4>
+	<p> Send your spectra via a POST request to the QuasarNET server and save the response to predictions.json. </p>
+<pre><code>curl -o predictions.json -X POST -H "Content-Type: application/json" --data @spectra.json https://thequasar.net:5000/predict
+</code></pre>
+	<p>The file spectra.json that contains your spectra should look like this:</p>
+	<pre><code>{
+  "wave":["l1","l2","l3",...],
+  "flux":[["f1_1","f2_1","f3_1",...], ["f1_2","f2_2","f3_2", ...], ...] ,
+  "ivar":[["iv1_1","iv2_1","iv3_1",...], ["iv1_2","iv2_2","iv3_2",...], ... ]
+}</code></pre>
+	<p>where the <code>"wave"</code> array contains the wavelenghts in Angstrom, <code>"flux"</code> is an array of arrays, each array containing the flux values (any units), and <code>ivar</code> is an array of arrays containing the inverse variances. The double quotes around the values are required. Note that all spectra are assumed to have a common wavelength grid.</p>
+
+	<p>The returned json contains the following fields:</p>
+	<pre><code>"lines": list of line-names searched for
+"lines_BAL": list of lines where BAL were searched for
+"p_&ltline name&gt": array of probabilities for the line given by &ltline name&gt (one probability per spectrum per line-name)
+"pBAL_&ltline name&gt": same but for BAL
+"z_&ltline name&gt": array of redshifts for the given line (one redshift per spectrum per line)
+"zBAL_&ltline name&gt": same but for BAL
+"zbest": array of redshift, chosen as that of the line with highest probability</code></pre>
+It is up to you to decide on a threshold probability and a threshold number of lines to determine when a spectrum is classified as a quasar. Please refer to <a href="https://arxiv.org/abs/1808.09955"> the paper </a> for recommendations on these values.
+
+<h4>From a python session:</h4>
+
+	<pre><code>## Organize your spectra in a dictionary:
+spectra = {}
+
+## wave is an array containing the wavelength values
+## (doesn't need to be sorted). E.g. for three wavelength bands:
+wave = numpy.hstack(wave_b, wave_r, wave_z)
+spectra['wave'] = [str(lam) for lam in wave]
+
+## fluxes is a list of arrays, each containing the flux of a spectrum
+## e.g. for three bands (r, b, z):
+fluxes = [numpy.hstack(flux1_b, flux1_r, flux1_z), numpy.hstack(flux2_b, flux2_r, flux2_z), ...]
+spectra['flux'] = [[str(fl) for fl in flux] for flux in fluxes]
+
+## ivar is a list of arrays, each containing the inverse variance of a spectrum
+ivars = [numpy.hstack(ivar0_b, ivar0_r, ivar0_z), numpy.hstack(ivar1_b, ivar1_r, ivar1_z), ...]
+spectra['ivar'] = [[str(iv) for iv in ivar] for ivar in ivars]
+
+## now send the post request
+## you might need to
+## pip install requests
+## if you don't have the requests library installed
+
+import requests
+url = "http://thequasar.net:5000/predict"
+r = requests.post(url = url, json = spectra)
+
+## store the results on the 'out' dictionary:
+out = r.json()
+</code></pre>
+</div>
+
+<div class="panel" style="height: 400pt">
+	<h4 id="instructions">Installation instructions</h4>
+
+	<p> QuasarNET runs on python3</p>
+
+	<pre><code class="bash language-bash">## clone the project 
+git clone https://github.com/ngbusca/QuasarNET.git
+cd QuasarNET
+## install external packages
+pip install -r requirements.txt --user
+## install QuasarNET
+python setup.py install --user
+</code></pre>
+
+	<h4>Download the pre-trained weights</h4>
+
+	<p>Download the weights to the QuasarNET/weights/ directory, unzip the file and fix read/write permissions.</p>
+
+	<p>The pre-trained weights are available for direct download at https://www.kaggle.com/ngbusca/qnet_trained_models</p>
+
+	<p> or use the kaggel API:</p>
+
+	<pre><code class="bash language-bash">cd weights
+kaggle datasets download ngbusca/qnet_trained_models
+unzip qnet_trained_models.zip
+chmod 600 *
+</code></pre>
+
+	<h4>Download the data</h4>
+
+	<p>These data are a reprocessing of data release 12 (DR12) of the Sloan Digital Sky Survey (https://www.sdss.org/dr12/)</p>
+
+	<p>They are available on Kaggle: https://www.kaggle.com/ngbusca/qnet_data</p>
+
+	<p>A practical way to download the data is to use the kaggle-api, which will allow you to do it from the command line. Otherwise you can simply click the download link on the website.</p>
+
+	<p>Download the data to the QuasarNET/data/ directory, unzip the file and set read/write permissions (skip the <code>kaggle datasets...</code> line if you've downloaded the data through the website).</p>
+
+	<pre><code class="bash language-bash">cd data
+kaggle datasets download ngbusca/qnet_data
+unzip qnet_data.zip
+chmod 600 *
+</code></pre>
+</div>
+
+<h3 id="contact">Conctact</h3>
+<p>Questions? Suggestions? <a href="mailto:contact@thequasar.net">contact@thequasar.net</a></p>
+
+
+<!--script>
+/* Loop through all dropdown buttons to toggle between hiding and showing its dropdown content - This allows the user to have multiple dropdowns without any conflict */
+var dropdown = document.getElementsByClassName("dropdown-btn");
+var i;
+
+for (i = 0; i < dropdown.length; i++) {
+  dropdown[i].addEventListener("click", function() {
+  this.classList.toggle("active");
+  var dropdownContent = this.nextElementSibling;
+  if (dropdownContent.style.display === "block") {
+  dropdownContent.style.display = "none";
+  } else {
+  dropdownContent.style.display = "block";
+  }
+  });
+}
+</script-->
+
+</body>
+</html>

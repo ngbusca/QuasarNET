@@ -1,0 +1,88 @@
+/* class panel: thin border and shadow; */
+
+.panel {
+  margin-top: 10px;
+  width: 600pt;
+  margin-left: 240px;
+  padding: 10px;
+  background: #FFF;
+  border-width: 0px;
+  border-style: solid;
+  box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+  overflow-x: scroll;
+  overflow-y: scroll;
+}
+
+/* Fixed sidenav, full height */
+.sidenav {
+  width: 240px;
+  position: fixed;
+  z-index: 1;
+  top: 0;
+  left: 0;
+  overflow-x: hidden;
+  padding-top: 20px;
+}
+
+/* Style the sidenav links and the dropdown button */
+.sidenav a, .dropdown-btn {
+  padding: 6px 8px 6px 16px;
+  font-family: sans-serif;
+  font-size: 20px;
+  text-decoration: none;
+  color: #111;
+  display: block;
+  border: none;
+  background: none;
+  width:100%;
+  text-align: left;
+  cursor: pointer;
+  outline: none;
+}
+
+/* On mouse-over */
+.sidenav a:hover, .dropdown-btn:hover {
+  color: #999;
+}
+
+/* Style page content */
+.main {
+  margin-left: 260px; /* Same as the width of the sidebar */
+  padding: 10px;
+  width: 600pt;
+  font-family: sans-serif;
+  font-size: 14pt;
+}
+
+/* Style for code blocks*/
+pre {
+  font-family: monospace;
+  background: #DDD;
+  overflow-x:scroll;
+  margin-left: 20pt;
+  padding: 5pt;
+}
+
+/* Add an active class to the active dropdown button */
+.active {
+  background-color: green;
+  color: white;
+}
+
+/* Dropdown container (hidden by default). Optional: add a lighter background color and some left padding to change the design of the dropdown content */
+.dropdown-container {
+  /*display: none;*/
+  padding-left: 8px;
+}
+
+/* Optional: Style the caret down icon */
+.fa-caret-down {
+  float: right;
+  padding-right: 8px;
+}
+
+/* On smaller screens, where height is less than 450px, change the style of the sidebar (less padding and a smaller font size) */
+@media screen and (max-height: 450px) {
+  .sidenav {padding-top: 15px;}
+  .sidenav a {font-size: 18px;}
+}
