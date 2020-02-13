@@ -4,7 +4,7 @@ import fitsio
 import argparse
 import numpy as np
 
-from keras.models import load_model, Model
+from tensorflow.keras.models import load_model, Model
 from quasarnet.io import read_data, read_sdrq, wave, read_desi_truth
 from scipy.interpolate import interp1d
 from quasarnet.models import custom_loss
