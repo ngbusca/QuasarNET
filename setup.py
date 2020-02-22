@@ -8,7 +8,7 @@ scripts = glob.glob('bin/*')
 
 description = "CNN for quasar classification and redshifting"
 
-version="1.0"
+version="2.0"
 setup(name="quasarnet",
       version=version,
       description=description,
@@ -18,7 +18,7 @@ setup(name="quasarnet",
       packages=['quasarnet'],
       package_dir = {'': 'py'},
       install_requires=['scipy','numpy',
-          'fitsio','h5py','keras','tensorflow'],
+          'fitsio','h5py','tensorflow'],
       #test_suite='picca.test.test_cor',
       scripts = scripts
       )

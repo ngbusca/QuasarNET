@@ -16,6 +16,10 @@ lines_bal = ['CIV(1548)']
 
 @app.route('/predict', methods=['POST'])
 def predict():
+    cl = request.content_length
+    if cl is not None and cl > 20 * 1024 * 1024:
+        return "input file too big (limit 20MB)"
+
     req_data = request.get_json()
     fl = np.array(req_data['flux']).astype(float)
     we = np.array(req_data['ivar']).astype(float)

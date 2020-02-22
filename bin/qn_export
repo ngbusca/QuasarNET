@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import glob
-from keras.models import load_model
+from tensorflow.keras.models import load_model
 from quasarnet.models import custom_loss
 from quasarnet.io import read_data, read_desi_truth
 from scipy.interpolate import interp1d
