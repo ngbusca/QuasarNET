@@ -64,7 +64,6 @@ def custom_loss(y_true, y_pred):
 
     N1 = tf.math.reduce_sum(y_true[...,0:nboxes], axis=1) + K.epsilon()
     N2 = tf.math.reduce_sum((1-y_true[...,0:nboxes]), axis=1) + K.epsilon()
-    print(N1, N2)
     loss_class = -tf.math.reduce_sum(y_true[...,0:nboxes]*tf.math.log(K.clip(y_pred[...,0:nboxes], K.epsilon(), 1-K.epsilon())), axis=1)/N1
     loss_class -= tf.math.reduce_sum((1-y_true[...,0:nboxes])*tf.math.log(K.clip(1-y_pred[...,0:nboxes], K.epsilon(), 1-K.epsilon())), axis=1)/N2
 
