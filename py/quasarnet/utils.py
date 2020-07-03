@@ -31,7 +31,6 @@ def process_preds(preds, lines, lines_bal):
     assert len(lines)+len(lines_bal)==len(preds)
 
     nspec, nboxes = preds[0].shape
-    nboxes //=2
     print('INFO: nspec = {}, nboxes={}'.format(nspec, nboxes))
     nlines = len(lines)
     c_line=zeros((nlines, nspec))
@@ -41,10 +40,9 @@ def process_preds(preds, lines, lines_bal):
 
     for il in range(len(lines)):
         l=absorber_IGM[lines[il]]
-        j = preds[il][:,:13].argmax(axis=1)
-        offset  = preds[il][arange(nspec, dtype=int), nboxes+j]
-        c_line[il]=preds[il][:,:13].max(axis=1)
-        z_line[il]=i_to_wave((j+offset)*len(wave)/nboxes)/l-1
+        j = preds[il].argmax(axis=1)
+        c_line[il]=preds[il].max(axis=1)
+        z_line[il]=i_to_wave(j)/l-1
 
     zbest = z_line[c_line.argmax(axis=0),arange(nspec)]
     zbest = array(zbest)
@@ -55,10 +53,9 @@ def process_preds(preds, lines, lines_bal):
 
     for il in range(len(lines_bal)):
         l = absorber_IGM[lines_bal[il]]
-        j = preds[nlines+il][:,:13].argmax(axis=1)
-        offset  = preds[il+nlines][arange(nspec, dtype=int), nboxes+j]
-        c_line_bal[il]=preds[il+nlines][:,:13].max(axis=1)
-        z_line_bal[il]=i_to_wave((j+offset)*len(wave)/nboxes)/l-1
+        j = preds[nlines+il].argmax(axis=1)
+        c_line_bal[il]=preds[il+nlines].max(axis=1)
+        z_line_bal[il]=i_to_wave(j)/l-1
 
     return c_line, z_line, zbest, c_line_bal, z_line_bal
 
