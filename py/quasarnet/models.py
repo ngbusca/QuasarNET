@@ -10,7 +10,7 @@ from tensorflow.keras.initializers import glorot_uniform, glorot_uniform
 from tensorflow.keras import regularizers
 from tensorflow.keras.activations import softmax, relu
 
-def QuasarNET(input_shape =  None, boxes = 13, nlines = 1, reg_conv = 0., reg_fc=0):
+def QuasarNET(input_shape =  None, nlines = 1, reg_conv = 0., reg_fc=0):
     
     X_input = Input(input_shape)
     X = X_input
@@ -36,22 +36,11 @@ def QuasarNET(input_shape =  None, boxes = 13, nlines = 1, reg_conv = 0., reg_fc
     outputs = []
     X_box = []
     for i in range(nlines):
-        X_box_aux = Dense(boxes, activation='sigmoid', 
+        X_line_out = Dense(input_shape[0], activation='sigmoid', 
                 name='fc_box_{}'.format(i), 
                 kernel_initializer=glorot_uniform())(X)
-        X_offset_aux = Dense(boxes, activation='sigmoid',
-        #X_offset_aux = Dense(boxes, activation='linear',
-                name='fc_offset_{}'.format(i), 
-                kernel_initializer=glorot_uniform())(X)
-        ## rescale the offsets to output between -0.1 and 1.1
-        X_offset_aux = Lambda(lambda x:-0.1+1.2*x)(X_offset_aux)
-        X_box_aux = concatenate([X_box_aux, X_offset_aux], 
-                name="conc_box_{}".format(i))
-        X_box.append(X_box_aux)
+        outputs.append(X_line_out)
     
-    for b in X_box:
-        outputs.append(b)
-
     model = Model(inputs=X_input, outputs=outputs, name='QuasarNET')
 
     return model
