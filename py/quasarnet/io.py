@@ -548,23 +548,25 @@ def box_offset(z, line='LYA', nboxes = 13):
     return box, offset, weights
 
 def objective(z, Y, bal, lines=['LYA'],
-        lines_bal=['CIV(1548)'], nboxes=13):
+        lines_bal=['CIV(1548)'], line_width=50):
     box=[]
     sample_weight = []
     for l in lines:
-        box_line, offset_line, weight_line = box_offset(z, 
-                line = l, nboxes=nboxes)
+        Z = (1+z[:,None])*absorber_IGM[l]-wave
+        Z /= line_width
+        box_line = np.exp(-Z**2)
 
         w = (Y.argmax(axis=1)==2) | (Y.argmax(axis=1)==3)
         ## set to zero where object is not a QSO 
         ## (the line confidence should be zero)
         box_line[~w]=0
-        box.append(np.concatenate([box_line, offset_line], axis=-1))
+        box.append(box_line)
         sample_weight.append(np.ones(Y.shape[0]))
 
     for l in lines_bal:
-        box_line, offset_line, weight_line = box_offset(z, 
-                line = l, nboxes=nboxes)
+        Z = (1+z[:,None])*absorber_IGM[l]-wave
+        Z /= line_width
+        box_line = np.exp(-Z**2)
 
         ## set to zero for non-quasars
         wqso = (Y.argmax(axis=1)==2) | (Y.argmax(axis=1)==3)
@@ -576,7 +578,7 @@ def objective(z, Y, bal, lines=['LYA'],
 
         ## use only spectra where visual flag and bi_civ do agree
         bal_weight = bal != 0
-        box.append(np.concatenate([box_line, offset_line], axis=-1))
+        box.append(box_line)
         sample_weight.append(bal_weight)
     
     return box, sample_weight
