@@ -11,6 +11,8 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument("-t","--truth", type = str, required=False,nargs="*")
 parser.add_argument("-d","--data", type = str, required=True,nargs="*")
+parser.add_argument("--nspec", type = int, required=False)
+parser.add_argument("-dt","--data-train", type = str, required=True)
 parser.add_argument("-e","--epochs", type = int,
         required=False, default = 5)
 parser.add_argument("-o","--out-prefix", type = str, required=True)
@@ -24,7 +26,19 @@ parser.add_argument("--decay", type = float, required=False,
 args = parser.parse_args()
 
 truth = io.read_truth(args.truth)
-tids,X,Y,z,bal = io.read_data(args.data, truth)
+
+h = fitsio.FITS(args.data_train)
+tids_train = h[1]['TARGETID'][:]
+
+truth = {t:truth[t] for t in tids_train if t in truth}
+nspec = len(truth)
+if args.nspec:
+    nspec = args.nspec
+
+print('number of spectra',nspec)
+
+tids,X,Y,z,bal = io.read_data(args.data, truth, nspec = nspec, verbosity=0)
+box, sample_weight = io.objective(z,Y,bal,lines=args.lines,lines_bal=args.lines_bal)
 
 model = QuasarNET(
         X[0,:,None].shape, 
@@ -33,22 +47,22 @@ model = QuasarNET(
 
 loss = []
 for i in args.lines:
-    loss.append(custom_loss)
+    loss.append('binary_crossentropy')
 
 for i in args.lines_bal:
-    loss.append(custom_loss)
+    loss.append('binary_crossentropy')
 
 adam = Adam(decay=args.decay)
 model.compile(optimizer=adam, loss=loss, metrics=[])
 
-box, sample_weight = io.objective(z,Y,bal,lines=args.lines, 
-        lines_bal=args.lines_bal)
 
 print( "starting fit")
-history = model.fit(X[:,:,None], box,
-        epochs = args.epochs,
-        batch_size = 256,
-        sample_weight = sample_weight)
+print(Y.shape)
+batch_size = 256
+history = model.fit(X[:,:,None],box,
+        batch_size = batch_size,
+        sample_weight = sample_weight,
+        epochs = args.epochs)
 
 model.save(args.out_prefix+".h5")
 model.summary()
